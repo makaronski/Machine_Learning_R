@@ -48,6 +48,7 @@ pred.rf5<-predict(rf5,newdata=Boston[-train,])
 mean((pred.rf5-boston.test)^2)
 #mtry=5, ntree=100 12.02 MSE
 
+#The plot is exported as random_forests_comparison.png
 plot(rf1,type="l",col="red",xlim=c(0,100),ylim=c(10,30))
 lines(rf2$mse,col="green")
 lines(rf3$mse,col="blue")
