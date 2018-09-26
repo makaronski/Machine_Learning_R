@@ -195,3 +195,27 @@ cvcheck<-cv.tree(model1,FUN=prune.misclass)
 cvcheck
 
 #g
+#plot(cvcheck)
+plot(cvcheck$size,cvcheck$dev,type='b')
+
+#h
+#With tree size of 7(7 terminal nodes) the MSE is least. 
+
+#i
+pruned <- prune.tree(model1,best=7)
+
+#j
+summary(pruned)
+#Misclassification errors of both pruned and non-pruned trees are the equal. The only difference we can 
+#observe is in the residual mean deviance.
+
+#k
+unpruned.err<-mean((model1.pred!=testdf$Purchase)^2)
+unpruned.err
+#0.1703704
+
+pruned.pred<-predict(pruned,newdata = testdf,type='class')
+pruned.err<-mean((pruned.pred!=testdf$Purchase)^2)
+pruned.err
+#0.1703704
+#No difference again on the MSE of test data between pruned and unpruned trees
