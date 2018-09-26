@@ -136,4 +136,62 @@ mean((carseats.rf.pred-test.carseats.sales)^2)
 #Tried also other options but the last one mentioned leads to the lowest test MSE.
 
 
+#####Exercise 9######
 
+#a
+attach(OJ)
+traindata <- sample(dim(OJ)[1],800)
+traindf<- OJ[traindata,]
+testdf <- OJ[-traindata,]
+dim(testdata)
+
+#b
+colnames(OJ)
+model1 <- tree(Purchase~., data = traindf)
+summary(model1)
+#8 terminal nodes, 16% training error rate (130/800 wrong).
+#Most important variables (actually used): "LoyalCH"     "SalePriceMM" "PriceDiff"  
+
+#c
+model1
+#The Terminal Nodes are marked with a STAR (*) at the end of the row. For example we can reach node 10,
+#which is also terminal node by starting from the root, then if LoyalCH is less than 0.48285, then if 
+#LoyalCH is bigger than 0.0356, then SalePrice has to be lower than 2.04
+#There are 142 points below this node in the tree
+#The deviance for all the points beneath this node in the tree = 135.2
+#The prediction is, that an observation that reaches this node, will be classified as MM
+#18% of the training observations in this node have CH, 81% - MM
+
+#So in order to classify an observation there, the LoyalCH has to be between 0.48285 and 0.035, AND 
+#SalePriceMM < 2.04
+
+#d
+plot(model1)
+text(model1,pretty=0)
+#We can clearly see that the most important variable is LoyalCH, which stays not only on the first level
+#of the tree, but also on the second.
+
+
+#e
+set.seed(1)
+model1.pred<-predict(model1,newdata=testdf,type='class')
+#oj.pred.check <- testdf$Purchase
+#oj.pred.matrix<-rep("MM",length(oj.pred.check))
+#oj.pred.matrix<-oj.pred.matrix[model1.pred>0.5,'CH']
+
+table(testdf$Purchase,model1.pred)
+#   model1.pred
+#    CH  MM
+#CH 154  15
+#MM  31  70
+mean(model1.pred==testdf$Purchase)
+# 0.8296296
+#Almost 83% accuracy on the test set.
+#~17% Error rate
+
+#f
+set.seed(2)
+cvcheck<-cv.tree(model1,FUN=prune.misclass)
+cvcheck
+
+#g
