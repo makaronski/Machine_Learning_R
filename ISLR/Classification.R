@@ -3,6 +3,7 @@ library(MASS)
 library(ISLR)
 library(class)
 library(gpairs)
+library(corrplot)
 
 attach(Smarket)
 train = (Year<2005)
@@ -227,3 +228,54 @@ mean(autoknn==test.mpg01)
 #For k=10 the accuracy  is: ~82.9%
 #For k=100 the accuracy is: ~85.7%
 #The best model is the one where k=3, because it has the smallest error compared to all others. 
+
+
+##############Exercise 13###############
+attach(Boston)
+colnames(Boston)
+pairs(Boston)
+crimedf<-Boston
+
+#Create a dummy column for the classes - over and under the median:
+crimerate.med<-matrix(Boston[,'crim'])
+crimerate.med[Boston$crim>median(Boston$crim)]=1
+crimerate.med[Boston$crim<median(Boston$crim)]=0
+crimedf<-data.frame(crimedf,crimerate.med)
+colnames(crimedf)
+
+#Divide to test and training set:
+crimetrain<-sample(dim(crimedf)[1],350)
+crimetest<-crimedf[-crimetrain,]
+
+#Descriptive Analysis
+attach(crimedf)
+corr<-cor(crimedf)
+corrplot.mixed(corr,lower='ellipse')
+
+boxplot(age~crimerate.med)
+#When the proportion of owner-occupied units built prior to 1940 grows, the crime rate also grows.
+
+boxplot(lstat~crimerate.med)
+#The bigger the % of population with low status the crime rate is higher.
+
+boxplot(indus~crimerate.med)
+#The higher the proportion of non-retail business acres in town, the higher the crime rate.
+
+boxplot(nox~crimerate.med)
+#The higher the nitric oxides concentration, the higher the crime rate.
+
+boxplot(dis~crimerate.med)
+#The lower the distance to the nearest employment centres, the higher the crime rate.
+
+#And I can continue with these, but it seems, that the pattern of areas with high area looks like to 
+#have the properties of the suburban and rural areas. There the houses are old, the population tends to have
+#lower status, there are less offices and working places. Also the employment centres tend to be also in the 
+#outskirts of the towns, not in city centres.
+
+
+#Logistic Regression
+crime.lr <- glm(crimerate.med~age+black+dis+tax, data=crimedf,subset=crimetrain,family=binomial)
+summary(crime.lr)
+#Looks like this is one of the better combinations of predictor variables. I have tried also other combinations,
+#but this one looks most promising.
+#in progress
