@@ -273,9 +273,50 @@ boxplot(dis~crimerate.med)
 #outskirts of the towns, not in city centres.
 
 
-#Logistic Regression
-crime.lr <- glm(crimerate.med~age+black+dis+tax, data=crimedf,subset=crimetrain,family=binomial)
+###Logistic Regression
+crime.lr <- glm(crimerate.med~nox+tax+indus, data=crimedf,subset=crimetrain,family=binomial)
 summary(crime.lr)
 #Looks like this is one of the better combinations of predictor variables. I have tried also other combinations,
-#but this one looks most promising.
-#in progress
+#but this one looks most promising, with lowest value for AIC.
+
+#Logreg prediction:
+crime.lr.pred<-predict(crime.lr,newdata=crimetest,type='response')
+checkdata<-rep(1,dim(crimetest)[1])
+checkdata[crime.lr.pred<0.5]=0
+table(checkdata,crimetest$crimerate.med)
+mean(checkdata==crimetest$crimerate.med)
+#80,128% correctness
+
+
+###LDA
+crime.lda<-lda(crimerate.med~nox+tax+indus, data=crimedf,subset=crimetrain)
+crime.lda
+
+#LDA Prediction
+crime.lda.pred<-predict(crime.lda,newdata=crimetest)
+table(crime.lda.pred$class,crimetest$crimerate.med)
+mean(crime.lda.pred$class==crimetest$crimerate.med)
+#81,41% correctness
+
+###QDA
+crime.qda<-qda(crimerate.med~nox+tax+indus, data=crimedf,subset=crimetrain)
+crime.qda
+
+#QDA Prediction
+crime.qda.pred<-predict(crime.qda,newdata=crimetest)
+table(crime.qda.pred$class,crimetest$crimerate.med)
+mean(crime.qda.pred$class==crimetest$crimerate.med)
+#80,12% correctness, actually same result as the Logistic regression
+
+
+###KNN
+crimeknntrain<-as.matrix(crimedf[crimetrain,c('nox','tax','indus')])
+crimeknnest<-as.matrix(crimedf[-crimetrain,c('nox','tax','indus')])
+crimeknnclasses<-crimedf$crimerate.med[crimetrain]
+
+crime.knn<-knn(crimeknntrain,crimeknnest,crimeknnclasses,10)
+crime.knn
+table(crime.knn,crimetest$crimerate.med)
+mean(crime.knn==crimetest$crimerate.med)
+#91,6% accuracy!
+#This is by far the best model we can choose between all of the ones we tried.
