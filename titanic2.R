@@ -23,9 +23,9 @@ testdf['familysize']<-familysize2
 #Deal with 4 levels of Embarked factor
 str(df)
 which(df$Embarked=="S")
-df[62,12]<-'S'
-df[830,12]<-'C'
-df$Embarked[df$Embarked %in% c('', 'C')] <- 'C'
+#df[62,12]<-'S'
+#df[830,12]<-'C'
+df$Embarked[df$Embarked %in% c('')] <- 'S'
 df$Embarked <- droplevels(df$Embarked)
 
 #Add mean to all missing Age values
@@ -34,6 +34,10 @@ sum(is.na(df$Age))
 
 testdf[which(is.na(testdf$Age)),5]<-mean(na.omit(testdf$Age))
 sum(is.na(df$Age))
+#Too many missing values and it is not appropriate to add the mean only. Will change the column based on correlation 
+#with other variables.
+
+
 
 #Create a variable for Age groups (Kids)
 
@@ -63,23 +67,72 @@ for( i in 1:length(testdf$Age) ) {
 
 
 #Try to use the names somehow, 1st try with the length
-namelength<-lapply(df$Name,as.character)
-df$namelength<-namelength
-df$namelengthh<-lapply(df$namelength,nchar)
-df$namelength<-df$namelengthh
-df$namelength<-as.integer(df$namelength)
+#EDIT - Doesn't work well, it has too much weight on model, without any worth.
+#namelength<-lapply(df$Name,as.character)
+#df$namelength<-namelength
+#df$namelengthh<-lapply(df$namelength,nchar)
+#df$namelength<-df$namelengthh
+#df$namelength<-as.integer(df$namelength)
 
-namelength2<-lapply(testdf$Name,as.character)
-testdf$namelength<-namelength2
-testdf$namelengthh<-lapply(testdf$namelength,nchar)
-testdf$namelength<- testdf$namelengthh
-testdf$namelength<-as.integer(testdf$namelength)
+#namelength2<-lapply(testdf$Name,as.character)
+#testdf$namelength<-namelength2
+#testdf$namelengthh<-lapply(testdf$namelength,nchar)
+#testdf$namelength<- testdf$namelengthh
+#testdf$namelength<-as.integer(testdf$namelength)
+
+#Extract title from name variable (Miss/Mrs/Mr/etc.)
+#proba<-substring(df$Name, regexpr(".", df$Name,perl=TRUE))
+regex<-regexpr("([A-Za-z]+)\\.",df$Name,perl=TRUE)
+df['titles']<-regmatches(df$Name,regex)
+df['titles']<-as.factor(df$titles)
+levels(df$titles)[18]<-'Rare'
+df$titles[df$titles %in% c('Lady.', 'Countess.','Capt.', 'Col.',
+                           'Don.', 'Dr.', 'Major.', 'Rev.', 'Sir.', 'Jonkheer.', 'Dona.')] <- 'Rare'
+df$titles[df$titles=='Mlle.']<-'Miss.'
+df$titles[df$titles=='Ms.']<-'Miss.'
+df$titles[df$titles=='Mme.']<-'Mrs.'
+df$titles <- droplevels(df$titles)
+
+
+regex2<-regexpr("([A-Za-z]+)\\.",testdf$Name,perl=TRUE)
+testdf['titles']<-regmatches(testdf$Name,regex2)
+testdf['titles']<-as.factor(testdf$titles)
+levels(testdf$titles)[18]<-'Rare'
+testdf$titles[testdf$titles %in% c('Lady.', 'Countess.','Capt.', 'Col.',
+                           'Don.', 'Dr.', 'Major.', 'Rev.', 'Sir.', 'Jonkheer.', 'Dona.')] <- 'Rare'
+testdf$titles[testdf$titles=='Mlle.']<-'Miss.'
+testdf$titles[testdf$titles=='Ms.']<-'Miss.'
+testdf$titles[testdf$titles=='Mme.']<-'Mrs.'
+testdf$titles <- droplevels(testdf$titles)
+
+
+#There are some missing values from the testdf and we cant predict properly
+apply(is.na(testdf),2,sum)
+which(is.na(testdf$Fare))
+testdf[153,9]<-mean(na.omit(testdf$Fare))
+
+#Add a range for Fare
+df <- within(df, FareRange <- as.integer(cut(df$Fare, quantile(df$Fare, probs=0:4/4), include.lowest=TRUE)))
+testdf<-within(testdf, FareRange <- as.integer(cut(testdf$Fare, quantile(testdf$Fare, probs=0:4/4), include.lowest=TRUE)))
+
+#Add a HasFamily variable - The persons who were alone had least chance to survive.
+HasFamily<-rep(1,dim(df)[1])
+HasFamily[df$familysize<1]<-0
+df['HasFamily']<-HasFamily
+
+HasFamily<-rep(1,dim(testdf)[1])
+HasFamily[testdf$familysize<1]<-0
+testdf['HasFamily']<-HasFamily
 
 #Drop unnecessary columns
 colnames(df)
-df<-df[,-c(1,4,7,8,9,11,16)]
+df<-df[,-c(1,4,6,7,8,9,10,11)]
 colnames(testdf)
-testdf<-testdf[,-c(1,3,6,7,8,10,15)]
+testdf<-testdf[,-c(1,3,5,6,7,8,9,10)]
+
+
+
+
 
 #####Descriptive Analysis#####
 barplot(table(df$AgeGroup,df$Survived),beside = TRUE)
@@ -101,6 +154,8 @@ barplot(table(df$familysize,df$Survived),beside = TRUE)
 boxplot(df$namelength~df$Survived)
 #Persons with longer names tend to have better survival rate (probably some titles?)
 
+boxplot(jitter(df$HasFamily)~df$Survived)
+
 #####MODELS#####
 #Split into test and train to compare the fit:
 trainingdata<- sample(dim(df)[1],600)
@@ -109,21 +164,29 @@ testdata<-df[-trainingdata,]
 #Random Forest
 df$Survived<-as.factor(df$Survived)
 set.seed(1)
-titanic.rf<-randomForest(df$Survived~.-Age,data=df,subset = trainingdata ,mtry=3,ntree=1000)
+titanic.rf<-randomForest(df$Survived~.,data=df,mtry=3,ntree=1000)
 varImpPlot(titanic.rf)
 sqrt(dim(df)[2])
 titanic.rf.pred<-predict(titanic.rf,newdata=testdata)
 mean(titanic.rf.pred==testdata$Survived)
 colnames(testdata)
 #82% correctness
-
+titanic.test.pred<-predict(titanic.rf,newdata=testdf)
+write.csv(titanic.test.pred,file='resultsrandf.csv')
 
 #Logistic Regression
-titanic.lr<-glm(df$Survived~.-Age,data=df,subset=trainingdata,family='binomial')
+titanic.lr<-glm(df$Survived~.,data=df,subset=trainingdata,family='binomial')
 summary(titanic.lr)
 titanic.lr.pred<-predict(titanic.lr,newdata=testdata,type='response')
 checklr<-rep(0,dim(testdata)[1])
-checklr[lr.pred>0.5]=1
+checklr[titanic.lr.pred>0.5]=1
 table(checklr,testdata$Survived)
 mean(checklr==testdata$Survived)
-#53% correctness - very low.
+#82% correctness
+
+#titanic.test.pred<-predict(titanic.rf,newdata=testdf)
+#write.csv(checklr,file='resultslogr.csv')
+
+
+summary(df)
+df <- within(df, FareRange <- as.integer(cut(df$Fare, quantile(df$Fare, probs=0:4/4), include.lowest=TRUE)))
