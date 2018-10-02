@@ -6,4 +6,4 @@
 
 * Kaggle Competition - [Titanic: Machine Learning from disaster](https://www.kaggle.com/c/titanic)
 Currently in top 20% with 79.425% accuracy of the predicted results.
-![kaggle](/kaggle_titanic2.png)
+![kaggle](/kaggle_titanic2.PNG)
