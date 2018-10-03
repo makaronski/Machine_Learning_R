@@ -5,6 +5,7 @@ library(class)
 library(gpairs)
 library(corrplot)
 library(randomForest)
+library(e1071)
 
 #####Data Manipulation#####
 
@@ -151,7 +152,7 @@ barplot(table(df$familysize,df$Survived),beside = TRUE)
 #Persons who had 1 relative had best survival rate (positive)
 #Persons with family size larger than 7 didn't survive
 
-boxplot(df$namelength~df$Survived)
+#boxplot(df$namelength~df$Survived)
 #Persons with longer names tend to have better survival rate (probably some titles?)
 
 boxplot(jitter(df$HasFamily)~df$Survived)
@@ -161,20 +162,21 @@ boxplot(jitter(df$HasFamily)~df$Survived)
 trainingdata<- sample(dim(df)[1],600)
 testdata<-df[-trainingdata,]
 
-#Random Forest
+###Random Forest
 df$Survived<-as.factor(df$Survived)
 set.seed(1)
-titanic.rf<-randomForest(df$Survived~.,data=df,mtry=3,ntree=1000)
+titanic.rf<-randomForest(Survived~.,data=df,subset = trainingdata,mtry=3,ntree=1000)
 varImpPlot(titanic.rf)
 sqrt(dim(df)[2])
 titanic.rf.pred<-predict(titanic.rf,newdata=testdata)
 mean(titanic.rf.pred==testdata$Survived)
 colnames(testdata)
 #82% correctness
+titanic.rf<-randomForest(Survived~.,data=df,mtry=3,ntree=1000)
 titanic.test.pred<-predict(titanic.rf,newdata=testdf)
-write.csv(titanic.test.pred,file='resultsrandf.csv')
+write.csv(titanic.test.pred,file='resultsrandf2.csv')
 
-#Logistic Regression
+###Logistic Regression
 titanic.lr<-glm(df$Survived~.,data=df,subset=trainingdata,family='binomial')
 summary(titanic.lr)
 titanic.lr.pred<-predict(titanic.lr,newdata=testdata,type='response')
@@ -182,11 +184,41 @@ checklr<-rep(0,dim(testdata)[1])
 checklr[titanic.lr.pred>0.5]=1
 table(checklr,testdata$Survived)
 mean(checklr==testdata$Survived)
-#82% correctness
+#81% correctness
 
 #titanic.test.pred<-predict(titanic.rf,newdata=testdf)
 #write.csv(checklr,file='resultslogr.csv')
 
+###SVM
+crossvalSVM=tune(svm ,Survived~.,data=df ,kernel ="linear",
+              ranges =list(cost=c(0.001 , 0.01, 0.1, 1,5,10,100) ))
+summary(crossvalSVM)
+#Best with cost=1
+titanic.svm<-svm(Survived~.,data=df,subset=trainingdata,kernel='linear',cost=1,scale=FALSE)
+titanic.svm.pred<-predict(titanic.svm,newdata = testdata)
+mean(titanic.svm.pred==testdata$Survived)
+#For Linear SVM - 81.09% accuracy
 
-summary(df)
-df <- within(df, FareRange <- as.integer(cut(df$Fare, quantile(df$Fare, probs=0:4/4), include.lowest=TRUE)))
+crossvalSVM2=tune(svm ,Survived~.,data=df ,kernel ="radial",
+                 ranges =list(cost=c(0.001 , 0.01, 0.1, 1,5,10,100),gamma=c(0.5,1,2,3,4) ) )
+summary(crossvalSVM2)
+titanic.svm2<-svm(Survived~.,data=df,subset=trainingdata,kernel='radial',cost=0.1,gamma=0.05,scale=TRUE)
+titanic.svm.pred2<-predict(titanic.svm2,newdata = testdata)
+mean(titanic.svm.pred2==testdata$Survived)
+#Radial SVM - Slightly worse 80.7%
+
+crossvalSVM3=tune(svm ,Survived~.,data=df ,kernel ="polynomial",
+                  ranges =list(cost=c(0.001 , 0.01, 0.1, 1,5,10,100),degree=c(0.5,1,2,3,4) ) )
+summary(crossvalSVM3)
+titanic.svm3<-svm(Survived~.,data=df,subset=trainingdata,kernel='radial',cost=1,degree=2,scale=TRUE)
+titanic.svm.pred3<-predict(titanic.svm2,newdata = testdata)
+mean(titanic.svm.pred3==testdata$Survived)
+#Same as Linear method.
+
+#So I assume the relationship is almost linear, because we don't see improvement with the non-linear SVMs and 
+#also they get really close with small values for their parameters.
+
+#Try to submit with SVM on Kaggle to check if some improvement is made.
+titanic.svm.test<-svm(Survived~.,data=df,kernel='linear',cost=1,scale=FALSE)
+titanic.svm.test<-predict(titanic.svm.test,newdata = testdf)
+write.csv(titanic.svm.test,file='resultssvm.csv')
