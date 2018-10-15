@@ -1,4 +1,4 @@
-# Machine_Learning_R
+# Machine Learning with R
 
 * Provided my solutions for some of the exercises from the book *Introduction to Statistical Learning* from Gareth James et.al.
 
