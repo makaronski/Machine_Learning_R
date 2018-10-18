@@ -9,4 +9,3 @@
   * Currently in top 20% with 79.425% accuracy of the predicted results.
  
 ![kaggle](/kaggle_titanic2.PNG)
-
